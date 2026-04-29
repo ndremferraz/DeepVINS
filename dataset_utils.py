@@ -21,6 +21,13 @@ def load_pt_dataset(path: str | Path) -> dict[str, torch.Tensor]:
     if not (torch.is_tensor(images) and torch.is_tensor(imu) and torch.is_tensor(target)):
         raise TypeError(f"Dataset {path} must contain tensor keys 'images', 'imus', and 'gts'.")
 
+    if not torch.isfinite(images).all():
+        raise ValueError(f"Dataset {path} contains non-finite values in 'images'.")
+    if not torch.isfinite(imu).all():
+        raise ValueError(f"Dataset {path} contains non-finite values in 'imus'.")
+    if not torch.isfinite(target).all():
+        raise ValueError(f"Dataset {path} contains non-finite values in 'gts'.")
+
     num_examples = images.shape[0]
     if imu.shape[0] != num_examples or target.shape[0] != num_examples:
         raise ValueError(
