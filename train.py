@@ -12,9 +12,9 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 100
 BATCH_SIZE = 32
 SEQUENCE_LENGTH = 8
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 1e-5
 WEIGHT_DECAY = 1e-4
-MAX_GRAD_NORM = 1.0
+MAX_GRAD_NORM = 0.5
 LR_DECAY_STEP = 20
 LR_DECAY_GAMMA = 0.5
 
@@ -95,19 +95,20 @@ def train_one_epoch(model, loader, loss_fn, optimizer):
         imu = batch["imu"].to(DEVICE)
         img = batch["img"].to(DEVICE)
         target = batch["target"].to(DEVICE)
+        dataset_name = batch["dataset_name"]
         batch_size = int(target.shape[0])
 
         if not torch.isfinite(imu).all():
-            raise ValueError(f"Non-finite IMU batch detected. {tensor_stats('imu', imu)}")
+            raise ValueError(f"Non-finite IMU batch detected in {dataset_name}. {tensor_stats('imu', imu)}")
         if not torch.isfinite(img).all():
-            raise ValueError(f"Non-finite image batch detected. {tensor_stats('img', img)}")
+            raise ValueError(f"Non-finite image batch detected in {dataset_name}. {tensor_stats('img', img)}")
         if not torch.isfinite(target).all():
-            raise ValueError(f"Non-finite target batch detected. {tensor_stats('target', target)}")
+            raise ValueError(f"Non-finite target batch detected in {dataset_name}. {tensor_stats('target', target)}")
 
         prediction = model(imu, img)
         if not torch.isfinite(prediction).all():
             raise ValueError(
-                "Model produced non-finite predictions before loss. "
+                f"Model produced non-finite predictions before loss in {dataset_name}. "
                 f"{tensor_stats('prediction', prediction)} | "
                 f"{tensor_stats('imu', imu)} | "
                 f"{tensor_stats('img', img)}"
@@ -117,7 +118,7 @@ def train_one_epoch(model, loader, loss_fn, optimizer):
         loss, metrics = parse_loss_output(loss_output)
         if not torch.isfinite(loss):
             raise ValueError(
-                "Loss became non-finite. "
+                f"Loss became non-finite in {dataset_name}. "
                 f"{tensor_stats('prediction', prediction)} | "
                 f"{tensor_stats('target', target)}"
             )
@@ -126,6 +127,13 @@ def train_one_epoch(model, loader, loss_fn, optimizer):
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)
         optimizer.step()
+
+        for name, parameter in model.named_parameters():
+            if not torch.isfinite(parameter).all():
+                raise ValueError(
+                    f"Non-finite parameter after optimizer step in {dataset_name}: {name} | "
+                    f"{tensor_stats(name, parameter)}"
+                )
 
         total_examples += batch_size
         for key, value in metrics.items():
@@ -144,19 +152,20 @@ def validate(model, loader, loss_fn):
             imu = batch["imu"].to(DEVICE)
             img = batch["img"].to(DEVICE)
             target = batch["target"].to(DEVICE)
+            dataset_name = batch["dataset_name"]
             batch_size = int(target.shape[0])
 
             if not torch.isfinite(imu).all():
-                raise ValueError(f"Non-finite IMU batch detected in validation. {tensor_stats('imu', imu)}")
+                raise ValueError(f"Non-finite IMU batch detected in validation for {dataset_name}. {tensor_stats('imu', imu)}")
             if not torch.isfinite(img).all():
-                raise ValueError(f"Non-finite image batch detected in validation. {tensor_stats('img', img)}")
+                raise ValueError(f"Non-finite image batch detected in validation for {dataset_name}. {tensor_stats('img', img)}")
             if not torch.isfinite(target).all():
-                raise ValueError(f"Non-finite target batch detected in validation. {tensor_stats('target', target)}")
+                raise ValueError(f"Non-finite target batch detected in validation for {dataset_name}. {tensor_stats('target', target)}")
 
             prediction = model(imu, img)
             if not torch.isfinite(prediction).all():
                 raise ValueError(
-                    "Model produced non-finite validation predictions before loss. "
+                    f"Model produced non-finite validation predictions before loss in {dataset_name}. "
                     f"{tensor_stats('prediction', prediction)}"
                 )
 
@@ -164,7 +173,7 @@ def validate(model, loader, loss_fn):
             loss, metrics = parse_loss_output(loss_output)
             if not torch.isfinite(loss):
                 raise ValueError(
-                    "Validation loss became non-finite. "
+                    f"Validation loss became non-finite in {dataset_name}. "
                     f"{tensor_stats('prediction', prediction)} | "
                     f"{tensor_stats('target', target)}"
                 )
