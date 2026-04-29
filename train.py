@@ -25,8 +25,8 @@ NUM_LAYERS = 4
 DROPOUT = 0.1
 OUTPUT_DIM = 6
 
-DATASET_DIR = Path("/content/drive/MyDrive/Colab Notebooks/DeepVINS Datasets")
-CHECKPOINT_DIR = Path("/content/drive/MyDrive/Colab Notebooks/DeepVINS Datasets/checkpoints")
+DATASET_DIR = Path("/content")
+CHECKPOINT_DIR = Path("/content/checkpoints")
 
 
 # Adjust this split if you want a different validation sequence.
