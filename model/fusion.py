@@ -102,6 +102,33 @@ class CausalFusionModel(nn.Module):
             nn.Linear(token_dim, output_dim)
         )
 
+        self._init_weights()
+
+    def _init_weights(self):
+        for module in self.modules():
+            if isinstance(module, (nn.Conv1d, nn.Conv2d)):
+                nn.init.kaiming_normal_(module.weight, nonlinearity="leaky_relu")
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+            elif isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+            elif isinstance(module, nn.MultiheadAttention):
+                nn.init.xavier_uniform_(module.in_proj_weight)
+                if module.in_proj_bias is not None:
+                    nn.init.zeros_(module.in_proj_bias)
+                nn.init.xavier_uniform_(module.out_proj.weight)
+                if module.out_proj.bias is not None:
+                    nn.init.zeros_(module.out_proj.bias)
+            elif isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm)):
+                if module.weight is not None:
+                    nn.init.ones_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+
+        nn.init.normal_(self.positional_embedding, mean=0.0, std=0.02)
+
     def forward(self, imu: torch.Tensor, img: torch.Tensor) -> torch.Tensor:
         if imu.ndim == 3:
             imu = imu.unsqueeze(1)
