@@ -24,6 +24,17 @@ def _check_finite(name: str, tensor: torch.Tensor) -> None:
         raise ValueError(f"Non-finite tensor detected. {_tensor_stats(name, tensor)}")
 
 
+def _build_sinusoidal_positional_encoding(max_sequence_length: int, token_dim: int) -> torch.Tensor:
+    position = torch.arange(max_sequence_length, dtype=torch.float32).unsqueeze(1)
+    div_term = torch.exp(
+        torch.arange(0, token_dim, 2, dtype=torch.float32) * (-torch.log(torch.tensor(10000.0)) / token_dim)
+    )
+    encoding = torch.zeros(max_sequence_length, token_dim, dtype=torch.float32)
+    encoding[:, 0::2] = torch.sin(position * div_term)
+    encoding[:, 1::2] = torch.cos(position * div_term)
+    return encoding.unsqueeze(0)
+
+
 class AttentionBlock(nn.Module):
     def __init__(self, input_dim=1024, embed_dim=1024, num_heads=4, dropout=0.1):
         super().__init__()
@@ -99,7 +110,11 @@ class CausalFusionModel(nn.Module):
             )
 
         self.token_dim = token_dim
-        self.positional_embedding = nn.Parameter(torch.zeros(1, max_sequence_length, token_dim))
+        self.register_buffer(
+            "positional_embedding",
+            _build_sinusoidal_positional_encoding(max_sequence_length, token_dim),
+            persistent=False,
+        )
         self.embedding_dropout = nn.Dropout(dropout)
 
         self.attention_blocks = nn.ModuleList([
@@ -145,8 +160,6 @@ class CausalFusionModel(nn.Module):
                     nn.init.ones_(module.weight)
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
-
-        nn.init.normal_(self.positional_embedding, mean=0.0, std=0.02)
 
     def forward(self, imu: torch.Tensor, img: torch.Tensor) -> torch.Tensor:
         if imu.ndim == 3:

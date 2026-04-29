@@ -125,6 +125,14 @@ def train_one_epoch(model, loader, loss_fn, optimizer):
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
+
+        for name, parameter in model.named_parameters():
+            if parameter.grad is not None and not torch.isfinite(parameter.grad).all():
+                raise ValueError(
+                    f"Non-finite gradient before optimizer step in {dataset_name}: {name} | "
+                    f"{tensor_stats(name + '_grad', parameter.grad)}"
+                )
+
         torch.nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)
         optimizer.step()
 
