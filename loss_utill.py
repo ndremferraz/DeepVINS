@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 
+EPS = 1e-6
+
 def normalize_quaternion(quaternion: torch.Tensor) -> torch.Tensor:
     return quaternion / quaternion.norm(dim=-1, keepdim=True).clamp_min(1e-8)
 
@@ -13,7 +15,7 @@ def quaternion_to_euler(quaternion: torch.Tensor) -> torch.Tensor:
     roll = torch.atan2(sinr_cosp, cosr_cosp)
 
     sinp = 2.0 * (qw * qy - qz * qx)
-    pitch = torch.asin(sinp.clamp(-1.0, 1.0))
+    pitch = torch.asin(sinp.clamp(-1.0 + EPS, 1.0 - EPS))
 
     siny_cosp = 2.0 * (qw * qz + qx * qy)
     cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
@@ -49,7 +51,7 @@ def euler_to_rotation_matrix(euler: torch.Tensor) -> torch.Tensor:
     return torch.stack((row0, row1, row2), dim=-2)
 
 def rotation_matrix_to_euler(rotation: torch.Tensor) -> torch.Tensor:
-    sy = torch.sqrt(rotation[..., 0, 0] ** 2 + rotation[..., 1, 0] ** 2)
+    sy = torch.sqrt((rotation[..., 0, 0] ** 2 + rotation[..., 1, 0] ** 2).clamp_min(EPS))
     singular = sy < 1e-6
 
     roll = torch.atan2(rotation[..., 2, 1], rotation[..., 2, 2])
@@ -57,7 +59,7 @@ def rotation_matrix_to_euler(rotation: torch.Tensor) -> torch.Tensor:
     yaw = torch.atan2(rotation[..., 1, 0], rotation[..., 0, 0])
 
     singular_roll = torch.atan2(-rotation[..., 1, 2], rotation[..., 1, 1])
-    singular_pitch = torch.atan2(-rotation[..., 2, 0], sy)
+    singular_pitch = torch.atan2(-rotation[..., 2, 0], sy.clamp_min(EPS))
     singular_yaw = torch.zeros_like(yaw)
 
     roll = torch.where(singular, singular_roll, roll)
