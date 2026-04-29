@@ -9,6 +9,21 @@ import math
 from model.encoders import InertialBlock, ImageBlock
 
 
+def _tensor_stats(name: str, tensor: torch.Tensor) -> str:
+    tensor = tensor.detach()
+    return (
+        f"{name}: shape={tuple(tensor.shape)} "
+        f"min={tensor.min().item():.6f} "
+        f"max={tensor.max().item():.6f} "
+        f"mean={tensor.mean().item():.6f}"
+    )
+
+
+def _check_finite(name: str, tensor: torch.Tensor) -> None:
+    if not torch.isfinite(tensor).all():
+        raise ValueError(f"Non-finite tensor detected. {_tensor_stats(name, tensor)}")
+
+
 class AttentionBlock(nn.Module):
     def __init__(self, input_dim=1024, embed_dim=1024, num_heads=4, dropout=0.1):
         super().__init__()
@@ -37,6 +52,7 @@ class AttentionBlock(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.l1(x)
+        _check_finite("attn_l1", x)
         t = x.size(1)
         causal_mask = torch.triu(
             torch.ones(t, t, device=x.device, dtype=torch.bool),
@@ -51,9 +67,12 @@ class AttentionBlock(nn.Module):
             attn_mask=causal_mask,
             need_weights=False
         )
+        _check_finite("attn_out", attn_out)
         x = x + self.dropout(attn_out)
+        _check_finite("attn_residual", x)
 
         x = x + self.l2(self.norm2(x))
+        _check_finite("ffn_residual", x)
         return x
 
 
@@ -149,17 +168,27 @@ class CausalFusionModel(nn.Module):
             )
 
         imu_token = self.imu_encoder(imu.reshape(batch_size * sequence_length, *imu.shape[2:]))
+        _check_finite("imu_token_flat", imu_token)
         img_token = self.img_encoder(img.reshape(batch_size * sequence_length, *img.shape[2:]))
+        _check_finite("img_token_flat", img_token)
 
         imu_token = imu_token.reshape(batch_size, sequence_length, -1)
         img_token = img_token.reshape(batch_size, sequence_length, -1)
+        _check_finite("imu_token", imu_token)
+        _check_finite("img_token", img_token)
 
         x = torch.cat((imu_token, img_token), dim=-1)
+        _check_finite("fused_token_concat", x)
         x = x + self.positional_embedding[:, :sequence_length]
         x = self.embedding_dropout(x)
+        _check_finite("fused_token_with_pos", x)
 
-        for block in self.attention_blocks:
+        for block_idx, block in enumerate(self.attention_blocks):
             x = block(x)
+            _check_finite(f"attention_block_{block_idx}", x)
 
         x = self.final_norm(x)
-        return self.head(x)
+        _check_finite("final_norm", x)
+        x = self.head(x)
+        _check_finite("head_output", x)
+        return x
