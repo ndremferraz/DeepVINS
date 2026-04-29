@@ -41,28 +41,24 @@ class InertialBlock(nn.Module):
         l2_size = l1_size * l2_filters
 
         # Depthwise convolution is applied with the intent to filter each channel individually
-        self.l1 = nn.Sequential(
-            nn.Conv1d(
-                in_channels=input_dims,
-                out_channels=l1_size,
-                kernel_size=3,
-                padding=1,
-                groups=input_dims
-            ),
-            nn.GroupNorm(num_groups=input_dims, num_channels=l1_size),
-            nn.LeakyReLU(0.01)    
+        self.l1_conv = nn.Conv1d(
+            in_channels=input_dims,
+            out_channels=l1_size,
+            kernel_size=3,
+            padding=1,
+            groups=input_dims
         )
-        self.l2 = nn.Sequential(
-            nn.Conv1d(
-                in_channels=l1_size,
-                out_channels=l2_size,
-                kernel_size=3,
-                padding=1,
-                groups=l1_size
-            ),
-            nn.GroupNorm(num_groups=l1_size, num_channels=l2_size),
-            nn.LeakyReLU(0.01)    
+        self.l1_act = nn.LeakyReLU(0.01)
+
+        self.l2_conv = nn.Conv1d(
+            in_channels=l1_size,
+            out_channels=l2_size,
+            kernel_size=3,
+            padding=1,
+            groups=l1_size
         )
+        self.l2_norm = nn.GroupNorm(num_groups=l1_size, num_channels=l2_size)
+        self.l2_act = nn.LeakyReLU(0.01)
         
         # 1D convolution along time axis across different channels
         self.l3 = nn.Sequential(
@@ -110,11 +106,18 @@ class InertialBlock(nn.Module):
         # to raw sensor scale and dataset-specific offsets.
         x = x - x.mean(dim=-1, keepdim=True)
         x = x / x.std(dim=-1, keepdim=True).clamp_min(1e-6)
+        x = x.clamp(-10.0, 10.0)
         _check_finite("imu_input_norm", x)
 
-        x = self.l1(x)
+        x = self.l1_conv(x)
+        _check_finite("imu_l1_conv", x)
+        x = self.l1_act(x)
         _check_finite("imu_l1", x)
-        x = self.l2(x)
+        x = self.l2_conv(x)
+        _check_finite("imu_l2_conv", x)
+        x = self.l2_norm(x)
+        _check_finite("imu_l2_norm", x)
+        x = self.l2_act(x)
         _check_finite("imu_l2", x)
         residual = self.pool(x).squeeze(-1)
         _check_finite("imu_residual", residual)
