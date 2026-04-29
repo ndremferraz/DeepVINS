@@ -8,6 +8,21 @@ import torch.nn.functional as F
 import math
 
 
+def _tensor_stats(name: str, tensor: torch.Tensor) -> str:
+    tensor = tensor.detach()
+    return (
+        f"{name}: shape={tuple(tensor.shape)} "
+        f"min={tensor.min().item():.6f} "
+        f"max={tensor.max().item():.6f} "
+        f"mean={tensor.mean().item():.6f}"
+    )
+
+
+def _check_finite(name: str, tensor: torch.Tensor) -> None:
+    if not torch.isfinite(tensor).all():
+        raise ValueError(f"Non-finite tensor detected. {_tensor_stats(name, tensor)}")
+
+
 class InertialBlock(nn.Module):
 
     def __init__(self, 
@@ -92,15 +107,25 @@ class InertialBlock(nn.Module):
             x = x.transpose(1, 2)
 
         x = self.l1(x)
+        _check_finite("imu_l1", x)
         x = self.l2(x)
+        _check_finite("imu_l2", x)
         residual = self.pool(x).squeeze(-1)
+        _check_finite("imu_residual", residual)
         x = self.l3(x)
+        _check_finite("imu_l3", x)
         x = self.l4(x)
+        _check_finite("imu_l4", x)
         x = self.pool(x).squeeze(-1)
+        _check_finite("imu_pool", x)
         x = self.fc1(x) + self.fc1_residual(residual)
+        _check_finite("imu_fc1_sum", x)
         x = self.fc1_norm(x)
+        _check_finite("imu_fc1_norm", x)
         x = self.fc1_activation(x)
+        _check_finite("imu_fc1_act", x)
         x = self.fc2(x)
+        _check_finite("imu_fc2", x)
         return x
     
 
