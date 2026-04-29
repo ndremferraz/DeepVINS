@@ -21,6 +21,7 @@ class InertialBlock(nn.Module):
 
         super().__init__()
 
+        self.input_dims = input_dims
         l1_size = input_dims * l1_filters
         l2_size = l1_size * l2_filters
 
@@ -84,6 +85,12 @@ class InertialBlock(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.ndim != 3:
+            raise ValueError(f"Expected IMU input with shape [B, C, T] or [B, T, C], got {tuple(x.shape)}")
+
+        if x.size(1) != self.input_dims and x.size(-1) == self.input_dims:
+            x = x.transpose(1, 2)
+
         x = self.l1(x)
         x = self.l2(x)
         residual = self.pool(x).squeeze(-1)

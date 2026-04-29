@@ -41,17 +41,21 @@ class EurocMavBatchDataset(IterableDataset):
         self,
         dataset_files: list[str | Path],
         batch_size: int,
+        sequence_length: int,
         shuffle_files: bool = True,
         shuffle_examples: bool = True,
     ):
         super().__init__()
         if batch_size <= 0:
             raise ValueError(f"batch_size must be positive, got {batch_size}")
+        if sequence_length <= 0:
+            raise ValueError(f"sequence_length must be positive, got {sequence_length}")
         if not dataset_files:
             raise ValueError("dataset_files cannot be empty.")
 
         self.dataset_files = [Path(path) for path in dataset_files]
         self.batch_size = batch_size
+        self.sequence_length = sequence_length
         self.shuffle_files = shuffle_files
         self.shuffle_examples = shuffle_examples
 
@@ -64,19 +68,34 @@ class EurocMavBatchDataset(IterableDataset):
             dataset = load_pt_dataset(dataset_file)
             num_examples = dataset["img"].shape[0]
 
-            indices = torch.arange(num_examples)
+            num_sequences = num_examples // self.sequence_length
+            usable_examples = num_sequences * self.sequence_length
+            if usable_examples == 0:
+                continue
+
+            sequence_starts = torch.arange(0, usable_examples, self.sequence_length)
             if self.shuffle_examples:
-                indices = indices[torch.randperm(num_examples)]
+                sequence_starts = sequence_starts[torch.randperm(num_sequences)]
 
-            usable_examples = (num_examples // self.batch_size) * self.batch_size
-            indices = indices[:usable_examples]
+            usable_sequences = (num_sequences // self.batch_size) * self.batch_size
+            sequence_starts = sequence_starts[:usable_sequences]
 
-            for start in range(0, usable_examples, self.batch_size):
-                batch_indices = indices[start : start + self.batch_size]
+            for start in range(0, usable_sequences, self.batch_size):
+                batch_starts = sequence_starts[start : start + self.batch_size]
+                img_batch = []
+                imu_batch = []
+                target_batch = []
+
+                for sequence_start in batch_starts.tolist():
+                    sequence_end = sequence_start + self.sequence_length
+                    img_batch.append(dataset["img"][sequence_start:sequence_end])
+                    imu_batch.append(dataset["imu"][sequence_start:sequence_end])
+                    target_batch.append(dataset["target"][sequence_start:sequence_end])
+
                 yield {
-                    "img": dataset["img"][batch_indices],
-                    "imu": dataset["imu"][batch_indices],
-                    "target": dataset["target"][batch_indices],
+                    "img": torch.stack(img_batch, dim=0),
+                    "imu": torch.stack(imu_batch, dim=0),
+                    "target": torch.stack(target_batch, dim=0),
                     "dataset_name": dataset["dataset_name"],
                 }
 
@@ -84,12 +103,14 @@ class EurocMavBatchDataset(IterableDataset):
 def build_euroc_loader(
     dataset_files: list[str | Path],
     batch_size: int,
+    sequence_length: int,
     shuffle_files: bool = True,
     shuffle_examples: bool = True,
 ) -> DataLoader:
     dataset = EurocMavBatchDataset(
         dataset_files=dataset_files,
         batch_size=batch_size,
+        sequence_length=sequence_length,
         shuffle_files=shuffle_files,
         shuffle_examples=shuffle_examples,
     )

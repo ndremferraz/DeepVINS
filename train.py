@@ -11,17 +11,19 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 EPOCHS = 100
 BATCH_SIZE = 32
+SEQUENCE_LENGTH = 8
 LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 1e-4
 MAX_GRAD_NORM = 1.0
 LR_DECAY_STEP = 20
 LR_DECAY_GAMMA = 0.5
 
-EMBED_DIM = 512
+ENCODER_DIM = 512
+TOKEN_DIM = 1024
 NUM_HEADS = 4
 NUM_LAYERS = 4
 DROPOUT = 0.1
-OUTPUT_DIM = 7
+OUTPUT_DIM = 6
 
 CHECKPOINT_DIR = Path("checkpoints")
 DATASET_DIR = Path(".")
@@ -48,12 +50,14 @@ def get_dataloaders():
     train_loader = build_euroc_loader(
         dataset_files=train_files,
         batch_size=BATCH_SIZE,
+        sequence_length=SEQUENCE_LENGTH,
         shuffle_files=True,
         shuffle_examples=True,
     )
     val_loader = build_euroc_loader(
         dataset_files=val_files,
         batch_size=BATCH_SIZE,
+        sequence_length=SEQUENCE_LENGTH,
         shuffle_files=False,
         shuffle_examples=False,
     )
@@ -136,11 +140,13 @@ def save_checkpoint(model, optimizer, epoch, best_val_loss, path):
 
 def main():
     model = CausalFusionModel(
-        embed_dim=EMBED_DIM,
+        encoder_dim=ENCODER_DIM,
+        token_dim=TOKEN_DIM,
         num_heads=NUM_HEADS,
         num_layers=NUM_LAYERS,
         dropout=DROPOUT,
         output_dim=OUTPUT_DIM,
+        max_sequence_length=SEQUENCE_LENGTH,
     ).to(DEVICE)
 
     loss_fn = PoseSequenceLoss().to(DEVICE)
@@ -159,6 +165,7 @@ def main():
     best_val_loss = float("inf")
 
     print(f"device: {DEVICE}")
+    print(f"sequence length: {SEQUENCE_LENGTH}")
     print(f"train files: {TRAIN_DATASET_FILES}")
     print(f"val files: {VAL_DATASET_FILES}")
 

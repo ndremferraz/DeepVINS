@@ -66,6 +66,28 @@ def rotation_matrix_to_euler(rotation: torch.Tensor) -> torch.Tensor:
 
     return torch.stack((roll, pitch, yaw), dim=-1)
 
+def euler_to_quaternion(euler: torch.Tensor) -> torch.Tensor:
+    roll, pitch, yaw = euler.unbind(dim=-1)
+
+    half_roll = roll * 0.5
+    half_pitch = pitch * 0.5
+    half_yaw = yaw * 0.5
+
+    cr = torch.cos(half_roll)
+    sr = torch.sin(half_roll)
+    cp = torch.cos(half_pitch)
+    sp = torch.sin(half_pitch)
+    cy = torch.cos(half_yaw)
+    sy = torch.sin(half_yaw)
+
+    qw = cr * cp * cy + sr * sp * sy
+    qx = sr * cp * cy - cr * sp * sy
+    qy = cr * sp * cy + sr * cp * sy
+    qz = cr * cp * sy - sr * sp * cy
+
+    quaternion = torch.stack((qw, qx, qy, qz), dim=-1)
+    return normalize_quaternion(quaternion)
+
 def ensure_sequence_dim(pose: torch.Tensor) -> torch.Tensor:
     if pose.ndim == 2:
         return pose.unsqueeze(1)
@@ -83,6 +105,31 @@ def split_pose(pose: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     translation = pose[..., :3]
     quaternion = pose[..., 3:]
     return translation, quaternion
+
+def split_prediction(prediction: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    if prediction.size(-1) == 7:
+        return split_pose(prediction)
+    if prediction.size(-1) == 6:
+        translation = prediction[..., :3]
+        euler = prediction[..., 3:]
+        quaternion = euler_to_quaternion(euler)
+        return translation, quaternion
+    raise ValueError(
+        f"Expected prediction last dimension 6 ([x, y, z, roll, pitch, yaw]) "
+        f"or 7 ([x, y, z, qw, qx, qy, qz]), got {prediction.size(-1)}"
+    )
+
+def prediction_to_transform(prediction: torch.Tensor) -> torch.Tensor:
+    prediction = ensure_sequence_dim(prediction)
+    translation, quaternion = split_prediction(prediction)
+    euler = quaternion_to_euler(quaternion)
+    rotation = euler_to_rotation_matrix(euler)
+
+    batch, steps = translation.shape[:2]
+    transform = torch.eye(4, device=prediction.device, dtype=prediction.dtype).repeat(batch, steps, 1, 1)
+    transform[..., :3, :3] = rotation
+    transform[..., :3, 3] = translation
+    return transform
 
 def pose_to_transform(pose: torch.Tensor) -> torch.Tensor:
     pose = ensure_sequence_dim(pose)
@@ -133,7 +180,7 @@ class PoseSequenceLoss(nn.Module):
         prediction = ensure_sequence_dim(prediction)
         target = ensure_sequence_dim(target)
 
-        pred_translation, pred_quaternion = split_pose(prediction)
+        pred_translation, pred_quaternion = split_prediction(prediction)
         target_translation, target_quaternion = split_pose(target)
 
         pred_frame_euler = quaternion_to_euler(pred_quaternion)
@@ -146,7 +193,7 @@ class PoseSequenceLoss(nn.Module):
             + self.rotation_weight * lframe_euler
         )
 
-        pred_frame_transform = pose_to_transform(prediction)
+        pred_frame_transform = prediction_to_transform(prediction)
         target_frame_transform = pose_to_transform(target)
 
         pred_sequence_transform = compose_sequence_transforms(pred_frame_transform)
