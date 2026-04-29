@@ -49,7 +49,7 @@ class InertialBlock(nn.Module):
                 padding=1,
                 groups=input_dims
             ),
-            nn.BatchNorm1d(l1_size),
+            nn.GroupNorm(num_groups=input_dims, num_channels=l1_size),
             nn.LeakyReLU(0.01)    
         )
         self.l2 = nn.Sequential(
@@ -60,7 +60,7 @@ class InertialBlock(nn.Module):
                 padding=1,
                 groups=l1_size
             ),
-            nn.BatchNorm1d(l2_size),
+            nn.GroupNorm(num_groups=l1_size, num_channels=l2_size),
             nn.LeakyReLU(0.01)    
         )
         
@@ -72,7 +72,7 @@ class InertialBlock(nn.Module):
                 kernel_size=3,
                 padding=1
             ),
-            nn.BatchNorm1d(l3_dims),
+            nn.GroupNorm(num_groups=8, num_channels=l3_dims),
             nn.LeakyReLU(0.01)
         )
         self.l4 = nn.Sequential(
@@ -82,7 +82,7 @@ class InertialBlock(nn.Module):
                 kernel_size=3,
                 padding=1
             ),
-            nn.BatchNorm1d(l4_dims),
+            nn.GroupNorm(num_groups=8, num_channels=l4_dims),
             nn.LeakyReLU(0.01)
         )
 
@@ -105,6 +105,12 @@ class InertialBlock(nn.Module):
 
         if x.size(1) != self.input_dims and x.size(-1) == self.input_dims:
             x = x.transpose(1, 2)
+
+        # Standardize each IMU window independently to reduce sensitivity
+        # to raw sensor scale and dataset-specific offsets.
+        x = x - x.mean(dim=-1, keepdim=True)
+        x = x / x.std(dim=-1, keepdim=True).clamp_min(1e-6)
+        _check_finite("imu_input_norm", x)
 
         x = self.l1(x)
         _check_finite("imu_l1", x)
