@@ -264,3 +264,4 @@ class ImageBlock(nn.Module):
         x = self.fc1_activation(x)
         x = self.fc2(x)
         return x
+  
