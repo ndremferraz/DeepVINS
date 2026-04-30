@@ -162,8 +162,8 @@ def rmse(prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
 class PoseSequenceLoss(nn.Module):
     def __init__(
         self,
-        frame_weight: float = 1.0,
-        sequence_weight: float = 1.0,
+        frame_weight: float = 0.75,
+        sequence_weight: float = 0.25,
         translation_weight: float = 1.0,
         rotation_weight: float = 1.0,
     ):
