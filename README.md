@@ -9,5 +9,8 @@ scene, while the inertial modality supplies robust, high-frequency motion cues. 
 estimation of six-degree-of-freedom pose, typically represented as translation and orientation relative to an
 initial reference frame.
 
-DeepVINS is an attempt to create a light weight Visual-Inertial Fusion transformer
+  DeepVINS is an attempt to create a light weight Visual-Inertial Fusion transformer
 The model was trainned on the EurocMav Dataset and due to I/O and storage limitations the entire model was trained entirely on Google Colab. 
+
+- The Model Declaration, batching and trainning loop are contained in [DeepVINS Trainning Notebook]()
+
