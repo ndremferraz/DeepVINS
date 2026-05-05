@@ -12,5 +12,6 @@ initial reference frame.
   DeepVINS is an attempt to create a light weight Visual-Inertial Fusion transformer
 The model was trainned on the EurocMav Dataset and due to I/O and storage limitations the entire model was trained entirely on Google Colab. 
 
-- The Model Declaration, batching and trainning loop are contained in [DeepVINS Trainning Notebook]()
+- The Model Declaration, batching and trainning loop are contained in [DeepVINS Trainning Notebook](DeepVINS_trainning_V2.ipynb)
+- The Model Text and Plotting using V1_02_medium sequence of the EurocMav dataset is contained in [DeepVINS Test Notebook](DeepVINS_test.ipynb) 
 
