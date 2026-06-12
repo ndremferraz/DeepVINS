@@ -61,8 +61,8 @@ class EurocMavDataset(Dataset):
 
         pose_data = self.data[seq_idx].iloc[start_idx:end_idx, 72:].to_numpy()
         
-        input_pose = torch.tensor(pose_data[:-1])
-        output_pose = torch.tensor(pose_data[1:])
+        input_pose = torch.tensor(pose_data[:-1], dtype=torch.float32)
+        output_pose = torch.tensor(pose_data[1:], dtype=torch.float32)
 
         return img_data, imu_data, input_pose, output_pose
     
