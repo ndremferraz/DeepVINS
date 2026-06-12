@@ -12,8 +12,6 @@ class EurocMavDataset(Dataset):
         for seq_path in seq_path_list:
             df = pd.read_csv(f'{seq_path}/mav0/input_data.csv')
             self.data.append(df)
-            print(len(df))
-            print(len(df) // context_len)
 
         self.context_len = context_len
         self.sequence_lengths = [len(df) // context_len for df in self.data]
@@ -21,6 +19,9 @@ class EurocMavDataset(Dataset):
     def __len__(self):
         return sum(self.sequence_lengths)
 
+
+    # Returns examples that have n = context_length - 1, 
+    # Because of the way we use subsequent frames
     def __getitem__(self, idx):
         
         seq_idx = 0
@@ -34,21 +35,34 @@ class EurocMavDataset(Dataset):
         img_names = self.data[seq_idx]['filename'].iloc[start_idx:end_idx].values
         img_names = img_names.tolist()
 
-        image_data = []
-        for img_name in img_names:
-            img_path = f'{self.seq_path_list[seq_idx]}/mav0/cam0/data/{img_name}'
-            img = Image.open(img_path).convert('L')
-            image_data.append(np.array(img))
-        image_data = np.stack(image_data, axis=0)
-        image_data = torch.from_numpy(image_data).float() / 255.0
+        img_data = []
+
+        for i in range(len(img_names) - 1):
+            
+            frame1_path = f'{self.seq_path_list[seq_idx]}/mav0/cam0/data/{img_names[i]}'
+            frame2_path = f'{self.seq_path_list[seq_idx]}/mav0/cam0/data/{img_names[i+1]}'
+            
+            frame1_img = Image.open(frame1_path).convert('L')
+            frame2_img = Image.open(frame2_path).convert('L')
+
+            frame1_img = np.array(frame1_img)
+            frame2_img = np.array(frame2_img)
+
+            img_data.append(np.stack((frame1_img,frame2_img)))
+
+        img_data = np.stack(img_data)
+        img_data = torch.from_numpy(img_data).float() / 255.0
 
         # The IMU data starts from column index 2 and goes up to index 72 (exclusive), which gives us 70 columns of IMU data.
         # I hardcoded these indices based on the structure of the input_data.csv file created in data_proc.py.
         # I wanted to save time
-        imu_data = self.data[seq_idx].iloc[start_idx:end_idx, 2:72].to_numpy()
+        imu_data = self.data[seq_idx].iloc[start_idx:(end_idx - 1), 2:72].to_numpy()
         imu_data = torch.tensor(imu_data, dtype=torch.float32)
 
-        gt_data = self.data[seq_idx].iloc[start_idx:end_idx, 72:].to_numpy()
-        gt_data = torch.tensor(gt_data, dtype=torch.float32)
+        pose_data = self.data[seq_idx].iloc[start_idx:end_idx, 72:].to_numpy()
+        
+        input_pose = torch.tensor(pose_data[:-1])
+        output_pose = torch.tensor(pose_data[1:])
 
-        return image_data, imu_data, gt_data
+        return img_data, imu_data, input_pose, output_pose
+    
