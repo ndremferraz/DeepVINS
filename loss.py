@@ -97,6 +97,15 @@ def rmse(prediction: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
 
 class PoseSequenceLoss(nn.Module):
 
+  '''
+  Loss function for pose sequence prediction.
+  
+  - Predicted Pose is the prediction of the relative pose between time t-1 and t
+  - Input Pose is the absolute pose at time t-1
+  - Target Pose is the absolute pose at time t
+
+  '''
+
   def __init__(
       self,
       translation_weight: float = 0.5,
