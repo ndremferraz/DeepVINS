@@ -1,5 +1,5 @@
 .vscode/*
-_pycache__/*
+__pycache__/*
 .codex
 vicon_room1
 
