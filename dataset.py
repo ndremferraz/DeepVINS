@@ -5,16 +5,24 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 class EurocMavDataset(Dataset):
-    def __init__(self, seq_path_list: list, context_len=64):
+    def __init__(self, data_file_path: list, image_folder: list, context_len=64):
+
+        if  (len(data_file_path) != len(image_folder)):
+
+            print("Invalid! list the amount of data files does not match the amount of image folders")
+            return 1 
         
-        self.seq_path_list = seq_path_list
+        self.data_file_path = data_file_path
+        self.image_folder = image_folder
+
         self.data = []
-        for seq_path in seq_path_list:
-            df = pd.read_csv(f'{seq_path}/mav0/input_data.csv')
+        for data_file in data_file_path:
+            df = pd.read_csv(data_file)
             self.data.append(df)
 
         self.context_len = context_len
         self.sequence_lengths = [len(df) // context_len for df in self.data]
+
 
     def __len__(self):
         return sum(self.sequence_lengths)
@@ -39,8 +47,8 @@ class EurocMavDataset(Dataset):
 
         for i in range(len(img_names) - 1):
             
-            frame1_path = f'{self.seq_path_list[seq_idx]}/mav0/cam0/data/{img_names[i]}'
-            frame2_path = f'{self.seq_path_list[seq_idx]}/mav0/cam0/data/{img_names[i+1]}'
+            frame1_path = f'{self.image_folder[seq_idx]}/{img_names[i]}'
+            frame2_path = f'{self.image_folder[seq_idx]}/{img_names[i+1]}'
             
             frame1_img = Image.open(frame1_path).convert('L')
             frame2_img = Image.open(frame2_path).convert('L')

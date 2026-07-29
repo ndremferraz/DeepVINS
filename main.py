@@ -8,24 +8,29 @@ from decoder import CausalFusionModel
 from train import Trainer
 
 
-EPOCHS = 10
+EPOCHS = 2
 CONTEXT_LEN = 12
 LEARNING_RATE = 1e-5
 LEARNING_RATE_STEP_SIZE = 20
 LEARNING_RATE_GAMMA = 0.5
 MAX_GRAD_NORM = 1
 
+TRAIN_CSVS = ['vicon_room1/V1_01_easy/mav0/train_data.csv', 'vicon_room1/V1_02_medium/mav0/train_data.csv', 'vicon_room1/V1_03_difficult/mav0/train_data.csv']
+VALID_CSVS = ['vicon_room1/V1_01_easy/mav0/val_data.csv', 'vicon_room1/V1_02_medium/mav0/val_data.csv', 'vicon_room1/V1_03_difficult/mav0/val_data.csv']
 
+IMG_FOLDER = ['vicon_room1/V1_01_easy/mav0/cam0/data', 'vicon_room1/V1_02_medium/mav0/cam0/data', 'vicon_room1/V1_03_difficult/mav0/cam0/data']
 
-SEQ_LIST = ['vicon_room1/V1_01_easy', 'vicon_room1/V1_02_medium', 'vicon_room1/V1_03_difficult']
-dataset = EurocMavDataset(seq_path_list=SEQ_LIST, context_len=CONTEXT_LEN+1)
-data_loader = DataLoader(dataset, 4)
+train_dataset = EurocMavDataset(data_file_path=TRAIN_CSVS, image_folder=IMG_FOLDER, context_len=CONTEXT_LEN+1)
+valid_dataset = EurocMavDataset(data_file_path=VALID_CSVS, image_folder=IMG_FOLDER, context_len=CONTEXT_LEN+1)
+
+train_loader = DataLoader(train_dataset, 4, shuffle=True)
+valid_loader = DataLoader(valid_dataset, 4)
 
 model = CausalFusionModel(context_length=CONTEXT_LEN)
 trainer = Trainer(
     model=model,
-    train_data=data_loader,
-    val_data=data_loader,
+    train_data=train_loader,
+    val_data=valid_loader,
     checkpoint_path='checkpoints/checkpoint.pth',
     metrics_path='metrics/metrics.json',
     total_epochs=EPOCHS,
@@ -35,4 +40,4 @@ trainer = Trainer(
     max_grad_norm=MAX_GRAD_NORM
 )
 
-trainer.train(loss_fn=PoseSequenceLoss())
+_ , _ = trainer.train(loss_fn=PoseSequenceLoss())
