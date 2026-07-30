@@ -12,7 +12,6 @@ class Trainer:
         train_data: DataLoader,
         val_data: DataLoader,
         checkpoint_path: str,
-        metrics_path: str,
         total_epochs: int,
         lr: float,
         lr_step_size: int,
@@ -32,9 +31,6 @@ class Trainer:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.train_metrics = []
-        self.val_metrics = []
-
     def _run_validation(self, loss_fn: nn.Module):
         self.model.eval()
         val_metrics = []
@@ -51,6 +47,7 @@ class Trainer:
                 _ , metrics = loss_fn(predict, input_pose, target_pose)
 
                 val_metrics.append(metrics)
+
         avg_val_metrics = {k: sum(d[k] for d in val_metrics) / len(val_metrics) for k in val_metrics[0]}
         return avg_val_metrics
 
@@ -74,26 +71,39 @@ class Trainer:
 
         return metrics
 
-    def train(self, loss_fn: nn.Module):
+    def train(self, val_interval: int,  loss_fn: nn.Module):
 
         self.model.to(self.device)
+
+        best_loss = float("inf")
+        train_results = []
+        val_results = []
 
         for epoch in range(self.total_epochs):
 
             print(f"Epoch {epoch + 1}/{self.total_epochs}")
 
-            for img_batch, imu_batch, input_pose, target_pose in self.train_data:
+            for i, (img_batch, imu_batch, input_pose, target_pose) in enumerate(self.train_data):
 
-                metrics = self._run_batch(imu_batch, img_batch, input_pose, target_pose, loss_fn)
+                train_metrics = self._run_batch(imu_batch, img_batch, input_pose, target_pose, loss_fn)
+                train_results.append(train_metrics['loss'].to('cpu'))
+                print(f"Train Metrics: {train_metrics}")
 
-                print(f"Train Metrics: {metrics}")
-                self.train_metrics.append(metrics)
+                if i % val_interval == 0:
 
-            val_metrics = self._run_validation(loss_fn)
-            print(f"Validation Metrics after Epoch {epoch + 1}: {val_metrics}")
-            self.val_metrics.append(metrics)
+                    val_metrics = self._run_validation(loss_fn=loss_fn)
+                    val_results.append(val_metrics['loss'].to('cpu'))
+                    print(f"Validation Metrics: {val_metrics}")
 
-        return self.val_metrics, self.train_metrics
+                    if(val_metrics['loss'] < best_loss):
+
+                        best_loss = val_metrics['loss']
+                        torch.save(self.model.state_dict(), self.checkpoint_path)
+
+        return train_results, val_results
+        
+
+
 
 
 
