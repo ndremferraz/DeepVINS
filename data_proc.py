@@ -3,12 +3,9 @@ import numpy as np
 import os 
 
 IMU_PER_IMG = 10
-SEQ_LIST = ['vicon_room1/V1_01_easy', 'vicon_room1/V1_02_medium', 'vicon_room1/V1_03_difficult']
+TRAIN_VAL_SPLIT = 0.9
 
-
-
-# Reads the IMU and image data for each sequence into a single dataframe that contains already alligned imu + img data.
-for seq in SEQ_LIST:
+def process_data(seq: str):
 
     imu_df = pd.read_csv(f'{seq}/mav0/imu0/data.csv')
     img_nm_df = pd.read_csv(f'{seq}/mav0/cam0/data.csv')
@@ -30,12 +27,11 @@ for seq in SEQ_LIST:
     
     df = pd.merge_asof(input_df.dropna(subset=['#timestamp [ns]']), gt_df.dropna(subset=['#timestamp [ns]']), on='#timestamp [ns]', direction='nearest')
 
-    train_df = df.iloc[:int(0.9 * len(df))]
-    val_df = df.iloc[int(0.9 * len(df)):]
+    train_df = df.iloc[:int(TRAIN_VAL_SPLIT * len(df))]
+    val_df = df.iloc[int(TRAIN_VAL_SPLIT * len(df)):]
 
     train_df.to_csv(f'{seq}/mav0/train_data.csv', index=False)
     val_df.to_csv(f'{seq}/mav0/val_data.csv', index=False)
-
 
 
 

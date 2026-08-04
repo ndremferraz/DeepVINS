@@ -46,7 +46,7 @@ train_results, val_results = trainer.train(val_interval=20 ,loss_fn=PoseSequence
 
 train_x = range(len(train_results))
 
-val_x = range(0, len(train_results), 20)  
+val_x = range(0, len(val_results), 20)  
 
 plt.plot(train_x, train_results, label="Train Loss", color="green")
 plt.plot(val_x, val_results, label="Validation Loss", color="red", marker="o")
