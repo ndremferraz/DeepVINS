@@ -18,16 +18,42 @@ MAX_GRAD_NORM = 1
 
 VALID_INTERVAL = 20
 
-TRAIN_CSVS = ['vicon_room1/V1_01_easy/mav0/train_data.csv', 'vicon_room1/V1_02_medium/mav0/train_data.csv', 'vicon_room1/V1_03_difficult/mav0/train_data.csv']
-VALID_CSVS = ['vicon_room1/V1_01_easy/mav0/val_data.csv', 'vicon_room1/V1_02_medium/mav0/val_data.csv', 'vicon_room1/V1_03_difficult/mav0/val_data.csv']
+DATASET_ROOT = './DeepVINS datasets/'
 
-IMG_FOLDER = ['vicon_room1/V1_01_easy/mav0/cam0/data', 'vicon_room1/V1_02_medium/mav0/cam0/data', 'vicon_room1/V1_03_difficult/mav0/cam0/data']
+TRAIN_CSVS = [
+    f'{DATASET_ROOT}MH_01_easy/mav0/train_data.csv',
+    f'{DATASET_ROOT}MH_02_easy/mav0/train_data.csv',
+    f'{DATASET_ROOT}MH_03_medium/mav0/train_data.csv',
+    f'{DATASET_ROOT}MH_04_difficult/mav0/train_data.csv',
+    f'{DATASET_ROOT}MH_05_difficult/mav0/train_data.csv',
+    f'{DATASET_ROOT}V1_01_easy/mav0/train_data.csv',
+    f'{DATASET_ROOT}V1_02_medium/mav0/train_data.csv',
+    f'{DATASET_ROOT}V1_03_difficult/mav0/train_data.csv',
+    f'{DATASET_ROOT}V2_02_medium/mav0/train_data.csv',
+    f'{DATASET_ROOT}V2_03_difficult/mav0/train_data.csv'
+]
 
-train_dataset = EurocMavDataset(data_file_path=TRAIN_CSVS, image_folder=IMG_FOLDER, context_len=CONTEXT_LEN+1)
-valid_dataset = EurocMavDataset(data_file_path=VALID_CSVS, image_folder=IMG_FOLDER, context_len=CONTEXT_LEN+1)
+VALID_CSVS = [
+    f'{DATASET_ROOT}MH_01_easy/mav0/val_data.csv',
+    f'{DATASET_ROOT}MH_02_easy/mav0/val_data.csv',
+    f'{DATASET_ROOT}MH_03_medium/mav0/val_data.csv',
+    f'{DATASET_ROOT}MH_04_difficult/mav0/val_data.csv',
+    f'{DATASET_ROOT}MH_05_difficult/mav0/val_data.csv',
+    f'{DATASET_ROOT}V1_01_easy/mav0/val_data.csv',
+    f'{DATASET_ROOT}V1_02_medium/mav0/val_data.csv',
+    f'{DATASET_ROOT}V1_03_difficult/mav0/val_data.csv',
+    f'{DATASET_ROOT}V2_02_medium/mav0/val_data.csv',
+    f'{DATASET_ROOT}V2_03_difficult/mav0/val_data.csv'
+]
+
+IMG_FOLDERS = [cv.replace('train_data.csv', 'cam0/data/') for cv in TRAIN_CSVS]
+
+train_dataset = EurocMavDataset(data_file_path=TRAIN_CSVS, image_folder=IMG_FOLDERS, context_len=CONTEXT_LEN+1)
+valid_dataset = EurocMavDataset(data_file_path=VALID_CSVS, image_folder=IMG_FOLDERS, context_len=CONTEXT_LEN+1)
 
 train_loader = DataLoader(train_dataset, 4, shuffle=True)
 valid_loader = DataLoader(valid_dataset, 4, shuffle=True)
+
 
 model = CausalFusionModel(context_length=CONTEXT_LEN)
 trainer = Trainer(

@@ -67,7 +67,7 @@ class EurocMavDataset(Dataset):
         imu_data = self.data[seq_idx].iloc[start_idx:(end_idx - 1), 2:72].to_numpy()
         imu_data = torch.tensor(imu_data, dtype=torch.float32)
 
-        pose_data = self.data[seq_idx].iloc[start_idx:end_idx, 72:].to_numpy()
+        pose_data = self.data[seq_idx].iloc[start_idx:end_idx, 72:79].to_numpy()
         
         input_pose = torch.tensor(pose_data[:-1], dtype=torch.float32)
         output_pose = torch.tensor(pose_data[1:], dtype=torch.float32)
