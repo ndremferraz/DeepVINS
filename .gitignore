@@ -1,5 +1,7 @@
 .vscode/*
 __pycache__/*
 .codex
-vicon_room1
+DeepVINS datasets
+best.pth
+ros2_ws
 test.py

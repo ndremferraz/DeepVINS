@@ -5,11 +5,16 @@ import os
 IMU_PER_IMG = 10
 TRAIN_VAL_SPLIT = 0.9
 
-def process_data(seq: str):
+
+def process_data(seq: str, vicon_avail: bool):
 
     imu_df = pd.read_csv(f'{seq}/mav0/imu0/data.csv')
     img_nm_df = pd.read_csv(f'{seq}/mav0/cam0/data.csv')
-    gt_df = pd.read_csv(f'{seq}/mav0/vicon0/data.csv')
+
+    if vicon_avail:
+        gt_df = pd.read_csv(f'{seq}/mav0/vicon0/data.csv')
+    else:
+        gt_df = pd.read_csv(f'{seq}/mav0/state_groundtruth_estimate0/data.csv')
     
     imu_arr = imu_df.to_numpy()
 
@@ -23,8 +28,13 @@ def process_data(seq: str):
     input_df = pd.concat([img_nm_df, imu_df], axis=1)
 
     input_df['#timestamp [ns]'] = input_df['#timestamp [ns]'].astype('float64')
+
+
+    if not vicon_avail:
+        gt_df = gt_df.rename(columns={'#timestamp': '#timestamp [ns]'})
+
     gt_df['#timestamp [ns]'] = gt_df['#timestamp [ns]'].astype('float64')
-    
+
     df = pd.merge_asof(input_df.dropna(subset=['#timestamp [ns]']), gt_df.dropna(subset=['#timestamp [ns]']), on='#timestamp [ns]', direction='nearest')
 
     train_df = df.iloc[:int(TRAIN_VAL_SPLIT * len(df))]
@@ -34,7 +44,30 @@ def process_data(seq: str):
     val_df.to_csv(f'{seq}/mav0/val_data.csv', index=False)
 
 
+def main():
 
+    seqs = ['DeepVINS datasets/MH_01_easy', 
+            'DeepVINS datasets/MH_02_easy',
+            'DeepVINS datasets/MH_03_medium',
+            'DeepVINS datasets/MH_04_difficult', 
+            'DeepVINS datasets/MH_05_difficult', 
+            'DeepVINS datasets/V1_01_easy', 
+            'DeepVINS datasets/V1_02_medium', 
+            'DeepVINS datasets/V1_03_difficult', 
+            'DeepVINS datasets/V2_02_medium', 
+            'DeepVINS datasets/V2_03_difficult']
+
+    for i,seq in enumerate(seqs):
+
+        if i < 5:
+            vicon_avail = False
+        else:
+            vicon_avail = True
+
+        process_data(seq, vicon_avail)
+
+if __name__ == "__main__":
+    main()
 
 
 
