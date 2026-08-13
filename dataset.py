@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 class EurocMavDataset(Dataset):
-    def __init__(self, data_file_path: list, image_folder: list, context_len=64):
+    def __init__(self, data_file_path: list, image_folder: list, sequence_length=64):
 
         if  (len(data_file_path) != len(image_folder)):
 
@@ -20,8 +20,8 @@ class EurocMavDataset(Dataset):
             df = pd.read_csv(data_file)
             self.data.append(df)
 
-        self.context_len = context_len
-        self.sequence_lengths = [len(df) // context_len for df in self.data]
+        self.sequence_length = sequence_length + 1 # +1 because we need to include consecutive frames for the input and output poses
+        self.sequence_lengths = [len(df) // self.sequence_length for df in self.data]
 
 
     def __len__(self):
@@ -37,8 +37,8 @@ class EurocMavDataset(Dataset):
             idx -= self.sequence_lengths[seq_idx]
             seq_idx += 1
 
-        start_idx = idx * self.context_len
-        end_idx = start_idx + self.context_len
+        start_idx = idx * self.sequence_length
+        end_idx = start_idx + self.sequence_length
 
         img_names = self.data[seq_idx]['filename'].iloc[start_idx:end_idx].values
         img_names = img_names.tolist()

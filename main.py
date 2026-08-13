@@ -10,11 +10,12 @@ from train import Trainer
 import matplotlib.pyplot as plt
 
 EPOCHS = 20
-CONTEXT_LEN = 12
 LEARNING_RATE = 1e-5
 LEARNING_RATE_STEP_SIZE = 20
 LEARNING_RATE_GAMMA = 0.5
 MAX_GRAD_NORM = 1
+
+SEQUENCE_LEN = 8        
 
 VALID_INTERVAL = 20
 
@@ -48,14 +49,14 @@ VALID_CSVS = [
 
 IMG_FOLDERS = [cv.replace('train_data.csv', 'cam0/data/') for cv in TRAIN_CSVS]
 
-train_dataset = EurocMavDataset(data_file_path=TRAIN_CSVS, image_folder=IMG_FOLDERS, context_len=CONTEXT_LEN+1)
-valid_dataset = EurocMavDataset(data_file_path=VALID_CSVS, image_folder=IMG_FOLDERS, context_len=CONTEXT_LEN+1)
+train_dataset = EurocMavDataset(data_file_path=TRAIN_CSVS, image_folder=IMG_FOLDERS, sequence_length=SEQUENCE_LEN)
+valid_dataset = EurocMavDataset(data_file_path=VALID_CSVS, image_folder=IMG_FOLDERS, sequence_length=SEQUENCE_LEN)
 
 train_loader = DataLoader(train_dataset, 4, shuffle=True)
 valid_loader = DataLoader(valid_dataset, 4, shuffle=True)
 
 
-model = CausalFusionModel(context_length=CONTEXT_LEN)
+model = CausalFusionModel(context_length=SEQUENCE_LEN)
 trainer = Trainer(
     model=model,
     train_data=train_loader,
