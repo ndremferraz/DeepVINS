@@ -9,7 +9,7 @@ from train import Trainer
 
 import matplotlib.pyplot as plt
 
-EPOCHS = 20
+EPOCHS = 1
 LEARNING_RATE = 1e-5
 LEARNING_RATE_STEP_SIZE = 20
 LEARNING_RATE_GAMMA = 0.5
@@ -55,6 +55,7 @@ valid_dataset = EurocMavDataset(data_file_path=VALID_CSVS, image_folder=IMG_FOLD
 train_loader = DataLoader(train_dataset, 4, shuffle=True)
 valid_loader = DataLoader(valid_dataset, 4, shuffle=True)
 
+'''
 
 model = CausalFusionModel(context_length=SEQUENCE_LEN)
 trainer = Trainer(
@@ -69,11 +70,11 @@ trainer = Trainer(
     max_grad_norm=MAX_GRAD_NORM
 )
 
-train_results, val_results = trainer.train(val_interval=20 ,loss_fn=PoseSequenceLoss())
+train_results, val_results = trainer.train(val_interval=VALID_INTERVAL, loss_fn=PoseSequenceLoss())
 
 train_x = range(len(train_results))
 
-val_x = range(0, len(val_results), 20)  
+val_x = range(0, len(val_results) * VALID_INTERVAL, VALID_INTERVAL)  
 
 plt.plot(train_x, train_results, label="Train Loss", color="green")
 plt.plot(val_x, val_results, label="Validation Loss", color="red", marker="o")
@@ -84,3 +85,4 @@ plt.legend()
 plt.grid(True)
 
 plt.show()
+'''

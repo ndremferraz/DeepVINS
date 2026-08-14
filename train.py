@@ -98,7 +98,8 @@ class Trainer:
                     if(val_metrics['loss'] < best_loss):
 
                         best_loss = val_metrics['loss']
-                        torch.save(self.model.state_dict(), self.checkpoint_path)
+                        jit_model = torch.jit.script(self.model) 
+                        torch.jit.save(jit_model, self.checkpoint_path)
 
         return train_results, val_results
         

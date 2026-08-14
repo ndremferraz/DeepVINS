@@ -108,8 +108,8 @@ class PoseSequenceLoss(nn.Module):
 
   def __init__(
       self,
-      translation_weight: float = 0.5,
-      rotation_weight: float = 0.5
+      translation_weight: float = 1.0,
+      rotation_weight: float = 1.0,
   ):
 
     super().__init__()
