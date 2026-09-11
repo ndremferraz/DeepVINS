@@ -55,7 +55,6 @@ valid_dataset = EurocMavDataset(data_file_path=VALID_CSVS, image_folder=IMG_FOLD
 train_loader = DataLoader(train_dataset, 4, shuffle=True)
 valid_loader = DataLoader(valid_dataset, 4, shuffle=True)
 
-'''
 
 model = CausalFusionModel(context_length=SEQUENCE_LEN)
 trainer = Trainer(
@@ -85,4 +84,4 @@ plt.legend()
 plt.grid(True)
 
 plt.show()
-'''
+
